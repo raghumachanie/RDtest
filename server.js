@@ -28,7 +28,6 @@ app.post('/generate', async (req, res) => {
     return res.status(400).json({ error: 'No script provided.' });
   }
 
-  // Security: block dangerous patterns
   const forbidden = [
     /require\s*\(\s*['"`]child_process/,
     /process\.exit/,
@@ -48,14 +47,12 @@ app.post('/generate', async (req, res) => {
 
   fs.mkdirSync(workDir, { recursive: true });
 
-  // Patch writeFile to use our controlled output path
   let patched = script
     .replace(/writeFile\s*\(\s*\{[^}]*\}\s*\)/g,
              `writeFile({ fileName: ${JSON.stringify(outFile)} })`)
     .replace(/writeFile\s*\(\s*['"\`][^'"\`]+['"\`]\s*\)/g,
              `writeFile({ fileName: ${JSON.stringify(outFile)} })`);
 
-  // Ensure pptxgenjs resolves from this app's node_modules
   patched = `process.chdir(${JSON.stringify(__dirname)});\n` + patched;
 
   const scriptPath = path.join(workDir, 'script.js');
@@ -82,7 +79,6 @@ app.post('/generate', async (req, res) => {
       'application/vnd.openxmlformats-officedocument.presentationml.presentation');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    // Stream the file then clean up
     const fileStream = fs.createReadStream(outFile);
     fileStream.pipe(res);
     fileStream.on('end', () => {
